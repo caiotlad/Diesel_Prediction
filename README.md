@@ -95,8 +95,10 @@ Análises realizadas:
 
 ---
 
-# Machine Learning
+### 4. Resultados
 
-## Objetivo do Modelo
-
-Prever semanas futuras de alta volatilidade no Diesel S10.
+| Métrica | Resultado |
+| `Accuracy` | 94% |
+| `Precision` | 80% |
+| `Recall` | 23% |
+| `F1 - Score` | 0.36% |
