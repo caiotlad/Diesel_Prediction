@@ -1,104 +1,81 @@
-# Diesel S10 Volatility Forecasting — Brazil
+# Previsão de Volatilidade de Preços do Diesel S10
 
-Projeto de análise de dados e machine learning voltado para previsão de volatilidade no preço do Diesel S10 utilizando dados públicos da ANP.
+Projeto de machine learning sobre dados públicos da ANP para identificar semanas de alta volatilidade no preço do Óleo Diesel S10 nos estados brasileiros.
 
-O objetivo do projeto é identificar padrões temporais no comportamento dos preços dos combustíveis e desenvolver um modelo capaz de antecipar semanas de alta volatilidade, auxiliando processos de análise de risco operacional, logística e tomada de decisão.
+## O que o projeto faz
 
----
+O modelo não tenta prever o valor exato do preço do diesel na próxima semana. Em vez disso, ele analisa o comportamento recente dos preços e responde uma pergunta mais simples: **essa semana tem chance de ser uma semana de choque?**
 
-# Business Problem
+A saída é binária — alerta de alta volatilidade ou não — o que torna o resultado diretamente útil para decisões de estoque, contratos e planejamento logístico.
 
-Oscilações abruptas no preço do Diesel impactam diretamente:
+## Fonte dos dados
 
-- custos logísticos;
-- planejamento operacional;
-- distribuição;
-- transporte rodoviário;
-- previsibilidade financeira.
+[ANP — Série Histórica do Levantamento de Preços de Combustíveis](https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/precos-revenda-e-de-distribuicao-combustiveis/serie-historica-do-levantamento-de-precos)
 
-Neste contexto, prever períodos de maior instabilidade pode ajudar empresas a:
+O arquivo utilizado é o de preços semanais por estado, disponível publicamente no site da agência. Coloque o arquivo baixado em `raw/semanal-estados-desde-2013.xlsx`.
 
-- antecipar riscos;
-- ajustar planejamento;
-- reduzir exposição a variações bruscas;
-- melhorar previsibilidade operacional.
+## Estrutura do repositório
 
-O projeto trata o problema como uma tarefa de classificação temporal:
+```
+├── raw/
+│   └── semanal-estados-desde-2013.xlsx   # Dados brutos da ANP (não versionado)
+├── notebooks/
+│   └── 01_data_understanding_v2.ipynb    # Notebook principal
+├── relatorio_prospeccao.docx             # Relatório do projeto
+└── README.md
+```
 
-> A próxima semana apresentará alta volatilidade no preço do Diesel S10?
+## Como executar
 
----
+**1. Clone o repositório**
+```bash
+git clone <url-do-repositorio>
+cd <nome-do-repositorio>
+```
 
-# Dataset
+**2. Instale as dependências**
+```bash
+pip install pandas numpy matplotlib seaborn scikit-learn openpyxl
+```
 
-Fonte:
+**3. Baixe os dados da ANP**
 
-- Agência Nacional do Petróleo, Gás Natural e Biocombustíveis (ANP)
+Acesse o link acima, baixe o arquivo de séries históricas semanais por estado e salve em `raw/semanal-estados-desde-2013.xlsx`.
 
-Base utilizada:
+**4. Execute o notebook**
+```bash
+jupyter notebook notebooks/01_data_understanding_v2.ipynb
+```
 
-- Série histórica semanal por estado
-- Combustível: Diesel S10
-- Período analisado: 2021–2026
+Execute as células na ordem. Todas as seções são independentes entre si, mas precisam ser rodadas sequencialmente.
 
-Os dados incluem:
+## Resumo do pipeline
 
-- preço médio de revenda;
-- preço mínimo e máximo;
-- desvio padrão;
-- coeficiente de variação;
-- distribuição regional e estadual.
-
----
-
-# Pipeline
-
-## 1. Data Cleaning
-
-A base original apresentou os problemas:
-
-- cabeçalhos institucionais;
-- valores ausentes representados por "-";
-- colunas numéricas tratadas como texto;
-- inconsistências estruturais.
-
-Todos foram devidamente tratados para tornar possível a análise.
-
----
-
-## 2. Exploratory Data Analysis (EDA)
-
-Análises realizadas:
-
-- evolução temporal do Diesel S10;
-- comparação regional;
-- estados com maior volatilidade;
-- comportamento histórico da dispersão dos preços.
-
-### Insights
-
-- Estados da região Norte apresentaram maior volatilidade média;
-- Tendências de preço possuem persistência temporal;
-- Volatilidade recente possui forte relação com instabilidade futura.
-
----
-
-### 3. Features criadas
-
-| Feature | Descrição |
+| Seção | O que faz |
 |---|---|
-| `VARIACAO_SEMANAL` | Alteração percentual semanal |
-| `MEDIA_MOVEL_4_SEMANAS` | Tendência recente |
-| `VOLATILIDADE_4_SEMANAS` | Instabilidade recente |
-| `LAG_1_SEMANA` | Variação de semana antes da observação atual |
-| `LAG_2_SEMANAS` | Variação de duas semanas antes da observação atual |
+| 1 | Carrega o arquivo Excel da ANP |
+| 2 | Limpa os dados: remove colunas com mais de 50% de valores ausentes e linhas sem preço ou data |
+| 3 | Filtra para Diesel S10 a partir de 2021 |
+| 4 | Análise exploratória: evolução de preços, volatilidade por estado e por região |
+| 5 | Cria os indicadores usados pelo modelo e define a variável alvo |
+| 6 | Treina o modelo com divisão temporal treino/teste |
+| 7 | Avalia os resultados e exibe a importância de cada variável |
 
----
+## Modelo
 
-### 4. Resultados
+**Random Forest** com 200 árvores, profundidade máxima de 10 e mínimo de 5 registros por folha.
 
-| Métrica | Resultado |
-| `Accuracy` | 94% |
-| `Precision` | 80% |
-| `Recall` | 23% |
-| `F1 - Score` | 0.36% |
+A variável alvo é calculada com base no percentil 90 das variações semanais do conjunto de treino — semanas com variação absoluta acima desse limiar são classificadas como alta volatilidade. Com os dados do período 2021–2026, o limiar resultou em aproximadamente 2,6%, com 9,4% dos registros marcados como positivos.
+
+O conjunto de teste nunca é usado para nenhum cálculo durante o treinamento, incluindo a definição do limiar.
+
+## Limitações conhecidas
+
+- O modelo não incorpora variáveis externas como preço do petróleo Brent e câmbio USD/BRL, que têm alto poder explicativo sobre o preço do diesel.
+- Choques sem precedente histórico (eventos geopolíticos, mudanças abruptas de política de preços) não são capturados adequadamente.
+- A validação foi feita com um único split temporal. Uma validação com múltiplas janelas seria mais robusta.
+
+## Requisitos
+
+- Python 3.10+
+- pandas, numpy, matplotlib, seaborn, scikit-learn, openpyxl
